@@ -4,7 +4,11 @@
 
 #include "bf16.h"
 #include "conversion.h"
-#include "utils.h"
+#include "bf16utils.h"
+#include "bfdiv16.h"
+#include "bfmul16.h"
+#include "bfadd16.h"
+
 
 #define SAMPLE_SIZE 10
 #define ITERATION 5
@@ -18,10 +22,11 @@ float my_sigmoid(float x) {
     bf16_t term = {.bits = 0x3F80};
     for(int i = 1;i < ITERATION;i++) {
         bf16_t temp_term = bfdiv16(bfpow16(fp32_to_bf16(x),i),fp32_to_bf16(floatfact(i))); /* (x^i / i!) */
-        if(i%2) term = bfsub16(temp_term, term);
-        else term = bfadd16(temp_term, term);
+        if(i%2) term = bfsub16(term, temp_term);
+        else term = bfadd16(term, temp_term);
     }
-	return bf16_to_fp32(term);
+	bf16_t ans = bfdiv16(fp32_to_bf16(1), bfadd16(fp32_to_bf16(1), term));
+	return bf16_to_fp32(ans);
 }
 
 /* Calculate the Mean Square Error for bf16_t my_sigmoid */
@@ -31,17 +36,6 @@ float MSE(float *arr) {
 		mse += powf(sigmoid(arr[i]) - my_sigmoid(arr[i]), 2);
 	
 	return mse / SAMPLE_SIZE;
-}
-
-float *random_float() {
-	float *arr = (float *)malloc(sizeof(float) * SAMPLE_SIZE);
-	if(arr == NULL) return NULL;
-
-	for(int i = 0;i != SAMPLE_SIZE;i++)
-		arr[i] = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
-
-	return arr;
-
 }
 
 /* Used to test each function working well */
@@ -82,7 +76,7 @@ void test(float a, float b) {
 }
 
 int main() {
-	float *arr = random_float();
+	float *arr = sample(SAMPLE_SIZE);
 	float mse = MSE(arr);
 	printf("MSE : %f\n", mse);
 }
