@@ -1,23 +1,51 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
 
 #include "bf16.h"
 #include "conversion.h"
 #include "utils.h"
 
 #define SAMPLE_SIZE 10
+#define ITERATION 5
 
-int main() {
-    // float *arr = sample(SAMPLE_SIZE);
-    // float output[SAMPLE_SIZE] = {};
-    //
-    // for(int i = 0;i <= SAMPLE_SIZE;i++)
-    //     output[i] = sigmoid(arr[i]);
-    //
-    // for(int i = 0;i <= SAMPLE_SIZE;i++)
-    //     printf("x = %f, sigmoid(x) = %f\n", arr[i], output[i]);
-    //
-    //free(arr);
-    float a = 0.125, b = 6;
+/* 
+ * Convert float x to bf16_t
+ * After calculation will extend bf16_t back to float
+ */
+float my_sigmoid(float x) {
+    /* 0x3F80 in bf16_t is '1', represent the first term in exp expansion */
+    bf16_t term = {.bits = 0x3F80};
+    for(int i = 1;i < ITERATION;i++) {
+        bf16_t temp_term = bfdiv16(bfpow16(fp32_to_bf16(x),i),fp32_to_bf16(floatfact(i))); /* (x^i / i!) */
+        if(i%2) term = bfsub16(temp_term, term);
+        else term = bfadd16(temp_term, term);
+    }
+	return bf16_to_fp32(term);
+}
+
+/* Calculate the Mean Square Error for bf16_t my_sigmoid */
+float MSE(float *arr) {
+	float mse = 0;
+	for(int i = 0;i <= SAMPLE_SIZE;i++)
+		mse += powf(sigmoid(arr[i]) - my_sigmoid(arr[i]), 2);
+	
+	return mse / SAMPLE_SIZE;
+}
+
+float *random_float() {
+	float *arr = (float *)malloc(sizeof(float) * SAMPLE_SIZE);
+	if(arr == NULL) return NULL;
+
+	for(int i = 0;i != SAMPLE_SIZE;i++)
+		arr[i] = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+
+	return arr;
+
+}
+
+/* Used to test each function working well */
+void test(float a, float b) {
     bf16_t bf_a = fp32_to_bf16(a), bf_b = fp32_to_bf16(b);
     bf16_t bfmul = bfmul16(bf_a, bf_b);
     bf16_t bfdiv = bfdiv16(bf_a, bf_b);
@@ -51,30 +79,10 @@ int main() {
     printBit(&bfsub.bits, sizeof(bfsub.bits));
     printf("sub_result bit pattern : ");
     printBit(&sub_result, sizeof(sub_result));
+}
 
-    printf("\n\n\n\n\n");
-
-    int n = 10;
-    float fp32_x  = 0.5;
-    bf16_t x = fp32_to_bf16(fp32_x);
-
-    /* 0x3F80 in bf16_t is '1', represent the first term in exp expansion */
-    bf16_t my_sigmoid = {.bits = 0x3F80};
-    for(int i = 1;i < n;i++) {
-        bf16_t term = bfdiv16(bfpow16(x,i),fp32_to_bf16(floatfact(i)));
-        printf("term %d : %f = %f / %f\n", i, bf16_to_fp32(term), bf16_to_fp32(bfpow16(x, i)), floatfact(i));
-        if(i%2) my_sigmoid = bfsub16(my_sigmoid, term);
-        else my_sigmoid = bfadd16(my_sigmoid, term);
-    }
-
-    my_sigmoid = bfdiv16((bf16_t){.bits = 0x3F80}, bfadd16((bf16_t){.bits = 0x3F80}, my_sigmoid));
-
-    printf("bfpow16(x,2) = %f\n", bf16_to_fp32(bfpow16(x, 2)));
-    printf("floatfact(3) = %f\n", floatfact(3));
-
-    printf("input x = %f\n", fp32_x);
-    printf("my bf16 sigmoid = %f\n", bf16_to_fp32(my_sigmoid));
-    printf("STL sigmoid approch = %f\n", sigmoid(fp32_x));
-
-    return 0;
+int main() {
+	float *arr = random_float();
+	float mse = MSE(arr);
+	printf("MSE : %f\n", mse);
 }
