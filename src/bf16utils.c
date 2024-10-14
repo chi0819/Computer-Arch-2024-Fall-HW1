@@ -44,9 +44,6 @@ float floatfact(int n) {
 }
 
 
-/* swap macro for uint32_t */
-#define iswap(a, b) do { uint16_t temp = (a); (a) = (b); (b) = temp; } while (0)
-
 int my_clz(uint16_t x) {
     int count = 0;
     uint16_t mask = 0x8000;  /* start with the highest bit set */
@@ -65,14 +62,14 @@ float sigmoid(float x) {
 }
 
 /* random sample float */
-float *sample(int sample_size) {
+float *sample(int sample_size, float min, float max) {
     float *arr = (float *)malloc(sample_size * sizeof(float));
     if (arr == NULL) {
         return NULL;
     }
 
     for (int i = 0; i < sample_size; i++) 
-        arr[i] = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+		arr[i] =  min + ((float)rand() / RAND_MAX) * (max - min);
 
     return arr;
 }

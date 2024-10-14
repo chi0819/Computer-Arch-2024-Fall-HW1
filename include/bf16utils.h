@@ -19,6 +19,6 @@ int my_clz(uint16_t x);
 float sigmoid(float x);
 
 /* random sample float */
-float *sample(int sample_size);
+float *sample(int sample_size, float min, float max);
 
 #endif

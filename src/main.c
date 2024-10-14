@@ -10,7 +10,7 @@
 #include "bfadd16.h"
 
 
-#define SAMPLE_SIZE 10
+#define SAMPLE_SIZE 50
 #define ITERATION 5
 
 /* 
@@ -31,7 +31,7 @@ float my_sigmoid(float x) {
 
 float MSE(float *arr1, float *arr2) {
 	float mse = 0;
-	for(int i = 0;i <= SAMPLE_SIZE;i++)
+	for(int i = 0;i < SAMPLE_SIZE;i++)
 		mse += powf(arr1[i] - arr2[i], 2);
 	
 	return mse / SAMPLE_SIZE;
@@ -82,9 +82,7 @@ void testSub(float a, float b) {
     printBit(&sub_result, sizeof(sub_result));
 }
 
-void testBF16MulMSE() {
-	float *arr1 = sample(SAMPLE_SIZE);
-	float *arr2 = sample(SAMPLE_SIZE);
+void testBF16MulMSE(float *arr1, float *arr2) {
 	float BF16Mul[SAMPLE_SIZE], FP32Mul[SAMPLE_SIZE];
 	for(int i = 0;i != SAMPLE_SIZE;i++) {
 		BF16Mul[i] = bf16_to_fp32(bfmul16(fp32_to_bf16(arr1[i]), fp32_to_bf16(arr2[i])));
@@ -94,6 +92,32 @@ void testBF16MulMSE() {
 	printf("bfmul16 MSE : %f\n", mse);
 }
 
+void testBF16AddMSE(float *arr1, float *arr2) {
+	float BF16Add[SAMPLE_SIZE], FP32Add[SAMPLE_SIZE];
+	for(int i = 0;i != SAMPLE_SIZE;i++) {
+		BF16Add[i] = bf16_to_fp32(bfadd16(fp32_to_bf16(arr1[i]), fp32_to_bf16(arr2[i])));
+		FP32Add[i] = arr1[i] + arr2[i];
+	}
+	float mse = MSE(BF16Add, FP32Add);
+	printf("bfadd16 MSE : %f\n", mse);
+}
+
+void testBF16SubMSE(float *arr1, float *arr2) {
+	float BF16Sub[SAMPLE_SIZE], FP32Sub[SAMPLE_SIZE];
+	for(int i = 0;i != SAMPLE_SIZE;i++) {
+		BF16Sub[i] = bf16_to_fp32(bfsub16(fp32_to_bf16(arr1[i]), fp32_to_bf16(arr2[i])));
+		FP32Sub[i] = arr1[i] - arr2[i];
+	}
+	float mse = MSE(BF16Sub, FP32Sub);
+	printf("bfsub16 MSE : %f\n", mse);
+}
+
 int main() {
-	testBF16MulMSE();
+	float *arr1 = sample(SAMPLE_SIZE, -5, 5);
+	float *arr2 = sample(SAMPLE_SIZE, -5, 5);
+	testBF16MulMSE(arr1, arr2);
+	testBF16AddMSE(arr1, arr2);
+	testBF16SubMSE(arr1, arr2);
+	free(arr1);
+	free(arr2);
 }
